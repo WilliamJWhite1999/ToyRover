@@ -8,6 +8,9 @@ from toyrover.types import Command, Direction, PlaceArgs
 
 
 def assert_place_args_match(expected: PlaceArgs, observed: PlaceArgs):
+    """
+    Assert that the two PlaceArgs objects are within floating-point precision bounds.
+    """
     assert np.allclose(expected.position, observed.position)
     assert np.allclose(expected.direction, observed.direction)
 

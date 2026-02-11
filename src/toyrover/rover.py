@@ -37,10 +37,17 @@ class Rover:
                 Starting direction of the Rover as a vector.
         """
         self._board = board
-        assert self._board.is_point_in_bounds(
-            position
-        ), "Position must be valid for Rover initialisation."
+        if not self._board.is_point_in_bounds(position):
+            raise ValueError("Position must be valid for Rover initialisation.")
         self.place(position, direction)
+
+    def get_position(self) -> Vec2:
+        """Return a copy of the position vector to prevent mutation"""
+        return self._position.copy()
+
+    def get_direction(self) -> Vec2:
+        """Return a copy of the direction vector to prevent mutation"""
+        return self._direction.copy()
 
     def place(self, position: Vec2, direction: Vec2):
         """
