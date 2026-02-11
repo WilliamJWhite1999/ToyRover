@@ -60,11 +60,15 @@ class InputController:
         """
         # Clean input
         cleaned_input = input.strip()
+        if len(cleaned_input) == 0:
+            # Silent exit on empty command
+            return None, None
+
         input_pieces = cleaned_input.split(" ")
 
         # All commands are of form <Command> or <Command> <Args>, if the input doesn't match this
         # then break early.
-        if len(input_pieces) != 1 or len(input_pieces) != 2:
+        if len(input_pieces) != 1 and len(input_pieces) != 2:
             print("Input format should be `<COMMAND>` or `<COMMAND> <ARGS>`")
             return None, None
 

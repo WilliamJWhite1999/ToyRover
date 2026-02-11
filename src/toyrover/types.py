@@ -2,6 +2,7 @@
 This module contains various command types used within the simulator.
 """
 
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Literal
 
@@ -67,3 +68,16 @@ class Direction(StrEnum):
                 return np.array([0, -1], dtype=np.float64)
             case Direction.WEST:
                 return np.array([-1, 0], dtype=np.float64)
+
+
+@dataclass
+class PlaceArgs:
+    """
+    Container for arguments read in for a Place command operation.
+    """
+
+    position: Vec2 = field()
+    """ Vec2 position vector """
+
+    direction: Vec2 = field()
+    """ Vec2 direction vector """
