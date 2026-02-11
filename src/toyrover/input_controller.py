@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 from toyrover.board import Board
 from toyrover.rover import Rover
-from toyrover.types import Command, Direction, Vec2
+from toyrover.types import Command, Direction, PlaceArgs, Vec2
 
 MOVE_DISTANCE = 1.0
 """ Default move distance for movement commands. """
@@ -42,7 +42,9 @@ class InputController:
         self._board = board
         self._rover = None
 
-    def process_input(self, input: str) -> tuple[Command | None, str | None]:
+    def process_input(
+        self, input: str
+    ) -> tuple[Command | None, Path | PlaceArgs | None]:
         """
         Given a string input of format COMMAND ARGUMENTS, return the corresponding Command enum
         and the arguments. The results of this should be passed to run_command to execute the
@@ -53,16 +55,20 @@ class InputController:
                 Input to be processed into the internal command format.
 
         Returns:
-            command: tuple[Command, str | None]:
+            command: tuple[Command, Path | PlaceArgs | None]:
                 Tuple containing the Command enum and any arguments (if present).
         """
+        # Clean input
         cleaned_input = input.strip()
         input_pieces = cleaned_input.split(" ")
 
-        assert (
-            len(input_pieces) <= 2
-        ), "Input format should be `<COMMAND>` or `<COMMAND> <ARGS>`"
+        # All commands are of form <Command> or <Command> <Args>, if the input doesn't match this
+        # then break early.
+        if len(input_pieces) != 1 or len(input_pieces) != 2:
+            print("Input format should be `<COMMAND>` or `<COMMAND> <ARGS>`")
+            return None, None
 
+        # Extract Command type.
         try:
             command = Command(input_pieces[0].upper())
         except ValueError:
@@ -73,11 +79,43 @@ class InputController:
             )
             return None, None
 
-        args = input_pieces[1] if len(input_pieces) == 2 else None
+        # Extract command args.
+        try:
+            match command:
+                case Command.FILE:
+                    args = Path(input_pieces[1])
+                    if not args.is_file():
+                        raise ValueError(f"Filepath {args} is not a valid file.")
+
+                case Command.PLACE:
+                    place_args = input_pieces[1].split(",")
+
+                    if len(place_args) != 3:
+                        raise ValueError(
+                            f"Unable to interpret {input_pieces[1]} as valid placement args. "
+                            "Expected form x,y,direction"
+                        )
+
+                    position: Vec2 = np.array(
+                        [float(place_args[0]), float(place_args[1])], dtype=np.float64
+                    ).astype(np.float64)
+                    direction = Direction(place_args[2].upper()).as_vec2()
+
+                    args = PlaceArgs(position, direction)
+
+                case _:
+                    args = None
+
+        except ValueError:
+            # Gracefully exit on malformed args
+            print(
+                f"Unable to interpret args '{input_pieces[1]}' for command '{command}'"
+            )
+            return None, None
 
         return command, args
 
-    def _handle_file(self, path: str | Path):
+    def _handle_file(self, filepath: Path):
         """
         Given a filepath, load the file and run each line in the file as if it were a command to
         be executed
@@ -86,19 +124,13 @@ class InputController:
             path (str | Path):
                 String or path object representing the filepath to the file to be loaded.
         """
-        filepath = Path(path)
-        if not filepath.is_file():
-            # Safe failure mode.
-            print(f"Filepath {filepath} is not a valid file.")
-            return
-
         with open(filepath, "r") as fh:
             for line in fh.readlines():
                 command, args = self.process_input(line)
                 if command is not None:
                     self.run_command(command, args)
 
-    def _handle_place(self, args: str):
+    def _handle_place(self, place_args: PlaceArgs):
         """
         Try to place the rover at the provided position with the given orientation. If the
         provided point is out of bounds, this will be ignored.
@@ -108,29 +140,24 @@ class InputController:
                 position and orientation in the format: x,y,direction where direction is one of
                 "NORTH", "EAST", "SOUTH" or "WEST"
         """
-        place_args = args.split(",")
-
-        if len(place_args) != 3:
-            print(f"Expected 3 comma-separated values for place command, got '{args}'.")
-            return
-
-        position: Vec2 = np.array(
-            [float(place_args[0]), float(place_args[1])], dtype=np.float64
-        )
-        direction = Direction(place_args[2].upper()).as_vec2()
-
         # Handle rover creation here so if we *wanted* to it would be very easy to have
         # multiple rovers spin up via input.
         if self._rover is None:
-            if self._board.is_point_in_bounds(position):
-                self._rover = Rover(self._board, position, direction)
+            if self._board.is_point_in_bounds(place_args.position):
+                self._rover = Rover(
+                    self._board, place_args.position, place_args.direction
+                )
             else:
-                print(f"Unable to create rover at {position} as this is out of bounds.")
+                print(
+                    f"Unable to create rover at {place_args.position} as this is out of bounds."
+                )
 
         else:
-            self._rover.place(position, direction)
+            self._rover.place(place_args.position, place_args.direction)
 
-    def run_command(self, command: Command, args: str | None = None) -> bool:
+    def run_command(
+        self, command: Command, args: Path | PlaceArgs | None = None
+    ) -> bool:
         """
         Given a command and optionally some arguments for the command, execute the given command.
         Returns True upon command completion unless the EXIT command is triggered in which case
@@ -145,11 +172,15 @@ class InputController:
         """
         match command:
             case Command.FILE:
-                assert args is not None, f"Arguments are required for command {command}"
+                assert isinstance(
+                    args, Path
+                ), f"Arguments are required for command {command}"
                 self._handle_file(args)
 
             case Command.PLACE:
-                assert args is not None, f"Arguments are required for command {command}"
+                assert isinstance(
+                    args, PlaceArgs
+                ), f"Arguments are required for command {command}"
                 self._handle_place(args)
 
             case Command.MOVE:
