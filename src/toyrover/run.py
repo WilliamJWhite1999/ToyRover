@@ -23,9 +23,7 @@ def run():
     should_run = True
     while should_run:
         console_input = str(input("Enter Command > "))
-        command, args = input_controller.process_input(console_input)
-        if command is not None:
-            should_run = input_controller.run_command(command, args)
+        should_run = input_controller.process_and_run_input(console_input)
 
 
 if __name__ == "__main__":

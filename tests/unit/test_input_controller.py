@@ -157,7 +157,7 @@ def test_file_command(tmp_path):
     def record_place(_, place_args: PlaceArgs):
         place_calls.append(place_args)
 
-    input_controller._handle_place = partial(record_place, input_controller)
+    input_controller._handle_place_command = partial(record_place, input_controller)
 
     dummy_file_path = Path(f"{tmp_path}/dummy_file.txt")
     with open(dummy_file_path, "w") as fh:
@@ -191,6 +191,16 @@ def test_file_command(tmp_path):
         position=np.array([0, 5]), direction=Direction.WEST.as_vec2()
     )
     assert_place_args_match(expected_args_4, place_calls[3])
+
+
+def test_process_and_run_input():
+    """
+    Provide a raw string command to the input controller and assert that it correctly interprets
+    it as a command type. We use EXIT here as it is very simple to test for since it is the only
+    command that returns False.
+    """
+    input_controller = InputController(MagicMock())
+    assert input_controller.process_and_run_input("EXIT") is False
 
 
 # NOTE: Rover commands are handled in system test.

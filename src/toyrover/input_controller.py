@@ -42,6 +42,22 @@ class InputController:
         self._board = board
         self._rover = None
 
+    def process_and_run_input(self, input: str) -> bool:
+        """
+        Given a string input of format COMMAND ARGUMENTS, process the input and run the given
+        command. Returns False when an EXIT command is sent.
+
+        Arguments:
+            input (str):
+                Input to be processed into the internal command format.
+        """
+        command, args = self.process_input(input)
+        if command is not None:
+            return self.run_command(command, args)
+        else:
+            print(f"Unable to run command '{input}'.")
+        return True
+
     def process_input(
         self, input: str
     ) -> tuple[Command | None, Path | PlaceArgs | None]:
@@ -119,7 +135,7 @@ class InputController:
 
         return command, args
 
-    def _handle_file(self, filepath: Path):
+    def _handle_file_command(self, filepath: Path):
         """
         Given a filepath, load the file and run each line in the file as if it were a command to
         be executed
@@ -134,7 +150,7 @@ class InputController:
                 if command is not None:
                     self.run_command(command, args)
 
-    def _handle_place(self, place_args: PlaceArgs):
+    def _handle_place_command(self, place_args: PlaceArgs):
         """
         Try to place the rover at the provided position with the given orientation. If the
         provided point is out of bounds, this will be ignored.
@@ -179,13 +195,13 @@ class InputController:
                 assert isinstance(
                     args, Path
                 ), f"Arguments are required for command {command}"
-                self._handle_file(args)
+                self._handle_file_command(args)
 
             case Command.PLACE:
                 assert isinstance(
                     args, PlaceArgs
                 ), f"Arguments are required for command {command}"
-                self._handle_place(args)
+                self._handle_place_command(args)
 
             case Command.MOVE:
                 # If desired, could add argument for move amount
